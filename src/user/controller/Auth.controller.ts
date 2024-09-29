@@ -1,7 +1,7 @@
 import { Controller, Post, Body, UseFilters, Req, Res } from '@nestjs/common';
-import { AuthService } from 'src/service/auth.service';
+import { AuthService } from 'src/user/service/auth.service';
 import { Request, Response } from 'express';
-import { UserExceptionFilter } from 'src/middleware/user.middleware';
+import { UserExceptionFilter } from 'src/user/middleware/user.middleware';
 
 @Controller('auth')
 @UseFilters(UserExceptionFilter)

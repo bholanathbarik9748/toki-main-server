@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './module/app.module';
+import { AppModule } from './user/module/app.module';
 import * as morgan from 'morgan';
-import { UserExceptionFilter } from './middleware/user.middleware';
+import { UserExceptionFilter } from './user/middleware/user.middleware';
 
 async function mainApp() {
   const app = await NestFactory.create(AppModule);

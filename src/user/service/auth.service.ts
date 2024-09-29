@@ -2,24 +2,29 @@ import { Injectable, Logger, UseFilters } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Request, Response } from 'express';
 import { Model } from 'mongoose';
-import { AuthDocument } from '../schema/user.schema'
-import { AuthDto } from 'src/validation/auth.dto';
+import { AuthDocument } from '../schema/user.schema';
+import { AuthDto } from 'src/user/validation/auth.dto';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import { UserExceptionFilter } from 'src/middleware/user.middleware';
+import { UserExceptionFilter } from 'src/user/middleware/user.middleware';
 import * as bcrypt from 'bcrypt';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 @UseFilters(UserExceptionFilter)
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
-  constructor(@InjectModel('User') private UserModel: Model<AuthDocument>) { }
+  // Inject JwtService in the constructor
+  constructor(
+    @InjectModel('User') private UserModel: Model<AuthDocument>,
+    private jwtService: JwtService // Ensure JwtService is injected
+  ) { }
 
   async signUp(req: Request, res: Response): Promise<Response> {
     const body = req.body;
 
-    // Transform body into an instance of  and validate it
+    // Transform body into an instance of AuthDto and validate it
     const createAuthDto = plainToInstance(AuthDto, body);
     const errors = await validate(createAuthDto);
 
@@ -56,18 +61,23 @@ export class AuthService {
       });
       await newUser.save();
 
+      // Create JWT token
+      const payload = { email: newUser.email, sub: newUser._id };
+      const access_token = this.jwtService.sign(payload);
+
       return res.status(200).json({
         status: 'success',
-        message: "User Create Successfully",
+        message: 'User created successfully',
         data: {
           email: newUser.email,
+          access_token,
         },
-      })
+      });
     } catch (error) {
-      this.logger.error('Error fetching records', { error });
+      this.logger.error('Error creating user', { error });
       return res.status(500).json({
         status: 'error',
-        message: 'Internal server error, please try again later.'
+        message: 'Internal server error, please try again later.',
       });
     }
   }
@@ -75,7 +85,7 @@ export class AuthService {
   async signIn(req: Request, res: Response): Promise<Response> {
     const body = req.body;
 
-    // Transform body into an instance of  and validate it
+    // Transform body into an instance of AuthDto and validate it
     const createAuthDto = plainToInstance(AuthDto, body);
     const errors = await validate(createAuthDto);
 
@@ -111,20 +121,24 @@ export class AuthService {
         });
       }
 
-      // Password is valid, proceed with login (you can generate a JWT token here)
+      // Password is valid, proceed with login
+      // Generate JWT token
+      const payload = { email: user.email, sub: user._id };
+      const access_token = this.jwtService.sign(payload);
+
       return res.status(200).json({
         status: 'success',
         message: 'Login successful',
         data: {
           email: user.email,
-          // You can also include token or other user details here
+          access_token, // Include the JWT token in the response
         },
       });
     } catch (error) {
-      this.logger.error('Error fetching records', { error });
+      this.logger.error('Error logging in', { error });
       return res.status(500).json({
         status: 'error',
-        message: 'Internal server error, please try again later.'
+        message: 'Internal server error, please try again later.',
       });
     }
   }
