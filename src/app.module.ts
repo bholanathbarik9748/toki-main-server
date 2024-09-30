@@ -3,18 +3,22 @@ import { Module } from '@nestjs/common';  // Core NestJS module for creating a m
 import { ConfigModule } from '@nestjs/config';  // Module to handle environment variables
 
 // Import controller for handling user authentication routes
-import { AuthController } from './user/controller/Auth.controller';  // Controller that manages authentication requests like login, signup, etc.
+import { AuthController } from './Auth/controller/Auth.controller';  // Controller that manages authentication requests like login, signup, etc.
 
 // Import services that contain the business logic for authentication
-import { AuthService } from './user/service/auth.service';  // Service for handling user authentication and token generation
+import { AuthService } from './Auth/service/auth.service';  // Service for handling user authentication and token generation
 
 // Import MongoDB connection configurations and schemas
 import { MongooseModule } from '@nestjs/mongoose';  // MongoDB integration with NestJS
-import { AuthDocument, User } from 'src/user/schema/user.schema';  // User schema and document for MongoDB
+import { AuthDocument, User } from 'src/Auth/schema/user.schema';  // User schema and document for MongoDB
 
 // Import Auth configurations
 import { PassportModule } from '@nestjs/passport';  // Passport module for authentication strategies
 import { JwtModule } from '@nestjs/jwt';  // JWT module to handle token creation and validation
+import { JwtStrategy } from './Auth/strategy/jwt.strategy';
+import { ProfileController } from './Profile/controller/Profile.controller';
+import { ProfileService } from './Profile/services/Profile.service';
+import { Profile, ProfileDocument } from './Profile/schema/Profile.schema';
 
 @Module({
   imports: [
@@ -34,14 +38,17 @@ import { JwtModule } from '@nestjs/jwt';  // JWT module to handle token creation
 
     // Connect to MongoDB using the URI specified in environment variables
     MongooseModule.forRoot(process.env.MONGO_URI),  // Establish a connection to MongoDB using Mongoose
-    MongooseModule.forFeature([{ name: User.name, schema: AuthDocument }]),  // Register the User schema with Mongoose
+    MongooseModule.forFeature([
+      { name: User.name, schema: AuthDocument },
+      { name: Profile.name, schema: ProfileDocument }
+    ]),  // Register the User schema with Mongoose
   ],
 
   // Controllers handle HTTP requests and map them to appropriate service methods
-  controllers: [AuthController],  // The AuthController manages routes related to user authentication (login, registration, etc.)
+  controllers: [AuthController, ProfileController],  // The AuthController manages routes related to user authentication (login, registration, etc.)
 
   // Providers contain the core business logic for modules
-  providers: [AuthService],  // AuthService will handle authentication logic, such as user validation and token management
+  providers: [AuthService, ProfileService, JwtStrategy],  // AuthService will handle authentication logic, such as user validation and token management
 })
 
 export class AppModule { }  // The main application module that integrates controllers, services, and other configurations

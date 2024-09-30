@@ -3,10 +3,10 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Request, Response } from 'express';
 import { Model } from 'mongoose';
 import { AuthDocument } from '../schema/user.schema';
-import { AuthDto } from 'src/user/validation/auth.dto';
+import { AuthDto } from 'src/Auth/validation/auth.dto';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import { UserExceptionFilter } from 'src/user/middleware/user.middleware';
+import { UserExceptionFilter } from 'src/Auth/middleware/user.middleware';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 
@@ -70,6 +70,7 @@ export class AuthService {
         message: 'User created successfully',
         data: {
           email: newUser.email,
+          userId: newUser._id,
           access_token,
         },
       });
@@ -131,6 +132,7 @@ export class AuthService {
         message: 'Login successful',
         data: {
           email: user.email,
+          userId: user._id,
           access_token, // Include the JWT token in the response
         },
       });
