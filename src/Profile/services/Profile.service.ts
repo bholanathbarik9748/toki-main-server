@@ -170,5 +170,44 @@ export class ProfileService {
     }
   }
 
-  
+  async deleteProfile(req: Request, res: Response): Promise<Response> {
+    const { id } = req.params;
+
+    // Validate if `id` is a valid MongoDB ObjectId
+    if (!isValidObjectId(id)) {
+      this.logger.warn(`Invalid profile ID format: ${id}`);
+      return res.status(400).json({
+        status: 'error',
+        message: 'Invalid profile ID format',
+      });
+    }
+
+    const isUserActive = await this.UserModel.findOne({ _id: new Types.ObjectId(id), isActive: true });
+    if (!isUserActive) {
+      this.logger.warn(`Profile not found for ID: ${id}`);
+      return res.status(404).json({
+        status: 'error',
+        message: 'Profile not found',
+      });
+    }
+
+    try {
+      await this.UserModel.findOneAndUpdate(
+        { _id: new Types.ObjectId(id) },
+        { isActive: false }
+      )
+
+      return res.status(200).json({
+        status: 'success',
+        message: 'User Delete Successfully',
+      })
+    } catch (error) {
+      // Catch any unexpected errors and log them
+      this.logger.error(`Error fetching profile for ID: ${id}`, error.stack);
+      return res.status(500).json({
+        status: 'error',
+        message: 'An error occurred while fetching the profile. Please try again later.',
+      });
+    }
+  }
 }

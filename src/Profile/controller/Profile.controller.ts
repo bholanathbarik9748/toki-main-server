@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Controller, Delete, Get, Patch, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { JwtAuthGuard } from 'src/Auth/strategy/jwt-auth.guard';
 import { ProfileService } from '../services/Profile.service';
@@ -26,5 +26,11 @@ export class ProfileController {
     @Patch('/:id')
     updateProfile(@Req() req: Request, @Res() res: Response) {
         return this.ProfileService.updateProfile(req, res);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Delete('/:id')
+    deleteProfile(@Req() req: Request, @Res() res: Response){
+        return this.ProfileService.deleteProfile(req, res);
     }
 }
