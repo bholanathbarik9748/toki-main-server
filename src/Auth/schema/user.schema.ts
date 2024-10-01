@@ -9,12 +9,15 @@ export type AuthDocument = User & Document;  // Combines the User class and Mong
 @Schema({ timestamps: true })  // Automatically adds createdAt and updatedAt timestamps to the User schema
 export class User {
     // Define the email field with required validation and ensure it's unique
-    @Prop({ required: true, unique: true })  // Email is required and must be unique in the database
+    @Prop({ required: true })  // Email is required and must be unique in the database
     email: string;
 
     // Define the password field with required validation
     @Prop({ required: true })  // Password is required for user authentication
     password: string;  // Use lowercase string type for the password field
+
+    @Prop({ required: true, default: true })
+    isActive: Boolean;
 }
 
 // Corrected schema export name for better clarity and consistency

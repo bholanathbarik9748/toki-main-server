@@ -10,11 +10,11 @@ export class Profile {
     @Prop({ required: true, trim: true })
     firstName: string;
 
-    @Prop({ required: true, type: Types.ObjectId, ref: 'User', trim: true })
-    userId: Types.ObjectId;
-
     @Prop({ required: true, trim: true })
     lastName: string;
+
+    @Prop({ required: true, unique: true, type: Types.ObjectId, ref: 'User', trim: true })
+    userId: Types.ObjectId;
 
     @Prop({ required: true, trim: true })
     occupation: string;

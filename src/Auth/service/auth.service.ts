@@ -41,7 +41,7 @@ export class AuthService {
     }
 
     // Check if the user already exists using `findOne`
-    const existingUser = await this.UserModel.findOne({ email: body.email });
+    const existingUser = await this.UserModel.findOne({ email: body.email, isActive: true });
 
     if (existingUser) {
       return res.status(400).json({
@@ -104,7 +104,7 @@ export class AuthService {
 
     try {
       // Check if the user exists by email
-      const user = await this.UserModel.findOne({ email: body.email });
+      const user = await this.UserModel.findOne({ email: body.email, isActive: true });
 
       if (!user) {
         return res.status(400).json({
