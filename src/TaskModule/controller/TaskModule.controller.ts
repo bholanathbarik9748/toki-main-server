@@ -1,31 +1,31 @@
 import { Controller, Delete, Get, Patch, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { JwtAuthGuard } from 'src/Auth/strategy/jwt-auth.guard';
-import { ProfileService } from '../services/Profile.service';
+import { TaskService } from '../services/TaskModule.service';
 
 
 @Controller('profile')
 @UseGuards(JwtAuthGuard)
-export class ProfileController {
-    constructor(private readonly ProfileService: ProfileService) { }
+export class TaskController {
+    constructor(private readonly TaskService: TaskService) { }
 
     @Get('/:id')
     getProfile(@Req() req: Request, @Res() res: Response) {
-        return this.ProfileService.getProfile(req, res);
+        return this.TaskService.getTask(req, res);
     }
 
     @Post('/:id')
     createProfile(@Req() req: Request, @Res() res: Response) {
-        return this.ProfileService.createProfile(req, res);
+        return this.TaskService.createTask(req, res);
     }
 
     @Patch('/:id')
     updateProfile(@Req() req: Request, @Res() res: Response) {
-        return this.ProfileService.updateProfile(req, res);
+        return this.TaskService.updateTask(req, res);
     }
 
     @Delete('/:id')
     deleteProfile(@Req() req: Request, @Res() res: Response) {
-        return this.ProfileService.deleteProfile(req, res);
+        return this.TaskService.deleteTask(req, res);
     }
 }

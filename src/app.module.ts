@@ -20,6 +20,10 @@ import { ProfileController } from './Profile/controller/Profile.controller';  //
 import { ProfileService } from './Profile/services/Profile.service';  // Service responsible for managing user profile data
 import { Profile, ProfileDocument } from './Profile/schema/Profile.schema';  // MongoDB schema and document for Profile entity
 
+// 
+import { ValidationController } from './Verification/controller/MailValidation.controller';
+import { MailValidationService } from './Verification/services/MailValidation.service';
+
 @Module({
   imports: [
     // Load environment configuration globally, making it available across the entire application
@@ -49,14 +53,16 @@ import { Profile, ProfileDocument } from './Profile/schema/Profile.schema';  // 
   // Define the controllers responsible for handling HTTP requests and routing them to appropriate service methods
   controllers: [
     AuthController,  // Handles authentication-related routes (login, signup, etc.)
-    ProfileController  // Handles profile-related routes (view/update profile, etc.)
+    ProfileController,  // Handles profile-related routes (view/update profile, etc.)
+    ValidationController,
   ],
 
   // Define the providers that contain the core business logic for this module
   providers: [
     AuthService,  // Contains authentication logic such as user validation and token generation
     ProfileService,  // Handles profile-related business logic such as fetching and updating user profiles
-    JwtStrategy  // Custom JWT strategy for handling token validation and securing routes
+    JwtStrategy,  // Custom JWT strategy for handling token validation and securing routes
+    MailValidationService,
   ],
 })
 
