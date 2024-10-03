@@ -139,14 +139,17 @@ export class ProfileService {
     }
 
     try {
+      const updateFields: Partial<ProfileDocument> = {};
+      if (body.firstName) updateFields.firstName = body.firstName;
+      if (body.lastName) updateFields.lastName = body.lastName;
+      if (body.occupation) updateFields.occupation = body.occupation;
+      if (body.address) updateFields.address = body.address;
+      if (body.phoneNumber) updateFields.phoneNumber = body.phoneNumber;
+
       const updateRecord = await this.ProfileModel.findOneAndUpdate(
         { userId: new Types.ObjectId(id) },
         {
-          firstName: body?.firstName,
-          lastName: body?.lastName,
-          occupation: body?.occupation,
-          address: body?.address,
-          phoneNumber: body?.phoneNumber,
+          $set: updateFields
         },
         { new: true }
       )
