@@ -23,6 +23,9 @@ import { Profile, ProfileDocument } from './Profile/schema/Profile.schema';  // 
 // 
 import { ValidationController } from './Verification/controller/MailValidation.controller';
 import { MailValidationService } from './Verification/services/MailValidation.service';
+import { TaskController } from './TaskModule/controller/TaskModule.controller';
+import { TaskService } from './TaskModule/services/TaskModule.service';
+import { Task, TaskDocument } from './TaskModule/schema/TaskModule.schema';
 
 @Module({
   imports: [
@@ -46,7 +49,8 @@ import { MailValidationService } from './Verification/services/MailValidation.se
     // Register the schemas for the User and Profile collections in MongoDB
     MongooseModule.forFeature([
       { name: User.name, schema: AuthDocument },  // Register User schema for authentication-related data
-      { name: Profile.name, schema: ProfileDocument }  // Register Profile schema for storing user profile information
+      { name: Profile.name, schema: ProfileDocument },  // Register Profile schema for storing user profile information
+      { name: Task.name, schema: TaskDocument }  // Register Profile schema for storing user profile information
     ]),
   ],
 
@@ -55,12 +59,14 @@ import { MailValidationService } from './Verification/services/MailValidation.se
     AuthController,  // Handles authentication-related routes (login, signup, etc.)
     ProfileController,  // Handles profile-related routes (view/update profile, etc.)
     ValidationController,
+    TaskController,
   ],
 
   // Define the providers that contain the core business logic for this module
   providers: [
     AuthService,  // Contains authentication logic such as user validation and token generation
     ProfileService,  // Handles profile-related business logic such as fetching and updating user profiles
+    TaskService,
     JwtStrategy,  // Custom JWT strategy for handling token validation and securing routes
     MailValidationService,
   ],

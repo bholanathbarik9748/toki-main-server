@@ -36,7 +36,7 @@ export class Task {
 
     // UserId: The ObjectId of the user who created the task, required
     @Prop({ required: true })
-    UserId: ObjectId;
+    UserId: Types.ObjectId;
 
     // ShareType: The sharing option for the task, defaults to "Private"
     @Prop({ required: true, default: ShareEnum.Private })
@@ -45,8 +45,12 @@ export class Task {
     // Priority: The priority level of the task, required and trimmed
     @Prop({ required: true, trim: true })
     Priority: PriorityEnum;
+
+    // isActive: The Status of the task, required and default is true
+    @Prop({ required: true, default: true })
+    isActive: Boolean;
 }
 
 // Generate the Mongoose schema for the Task class
 // This converts the Task class into a Mongoose schema, adding additional MongoDB features
-export const TaskSchema = SchemaFactory.createForClass(Task);
+export const TaskDocument = SchemaFactory.createForClass(Task);

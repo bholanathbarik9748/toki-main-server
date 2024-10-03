@@ -31,27 +31,47 @@ export class TaskService {
     }
 
     try {
-      const taskList = await this.TaskModel.arguments([
-        {
-          $match: {
-            $or: [
-              { UserId: new Types.ObjectId(id) },
-              { ShareType: ShareEnum.Public },
-            ]
+      const taskList = await this.TaskModel.aggregate(
+        [
+          {
+            $match: {
+              $or: [
+                { UserId: new Types.ObjectId(id), isActive: true },
+                { ShareType: ShareEnum.Public, isActive: true },
+              ]
+            }
+          },
+          {
+            $lookup: {
+              from: 'profiles',
+              localField: 'UserId',
+              foreignField: 'userId',
+              as: 'profilesData',
+            }
+          },
+          {
+            $unwind: {
+              path: '$profiles',
+              includeArrayIndex: 'string',
+              preserveNullAndEmptyArrays: true
+            }
+          },
+          {
+            $addFields: {
+              profile: { $arrayElemAt: ['$profilesData', 0] }
+            }
+          },
+          {
+            $project: {
+              profilesData: 0,
+              'profile._id': 0,
+              'profile.userId': 0,
+              __v: 0,
+              string: 0,
+            }
           }
-        },
-        {
-          $lookup: {
-            from: 'profile',
-            localField: 'UserId',
-            foreignField: 'userId',
-            as: 'profileData',
-          }
-        },
-        {
-          $unwind: { path: '$profileData', preserveNullAndEmptyArrays: true }
-        }
-      ]);
+        ]
+      );
 
       return res.status(200).json({
         status: 'success',
@@ -60,6 +80,34 @@ export class TaskService {
     } catch (error) {
       // Catch any unexpected errors and log them
       this.logger.error(`Error fetching profile for ID: ${id}`, error.stack);
+      return res.status(500).json({
+        status: 'error',
+        message: 'An error occurred while fetching the profile. Please try again later.',
+      });
+    }
+  }
+
+  async getSingleTask(req: Request, res: Response): Promise<Response> {
+    const { id } = req.params;
+
+    // Validate if `id` is a valid MongoDB ObjectId
+    if (!isValidObjectId(id)) {
+      this.logger.warn(`Invalid profile ID format: ${id}`);
+      return res.status(400).json({
+        status: 'error',
+        message: 'Invalid profile ID format',
+      });
+    }
+
+    try {
+      const singleTask = await this.TaskModel.findOne({ _id: new Types.ObjectId(id), isActive: true });
+      return res.status(200).json({
+        status: 'success',
+        data: singleTask,
+      });
+    } catch (error) {
+      // Catch any unexpected errors and log them
+      this.logger.error(`Error fetching Task for ID: ${id}`, error.stack);
       return res.status(500).json({
         status: 'error',
         message: 'An error occurred while fetching the profile. Please try again later.',
@@ -175,7 +223,54 @@ export class TaskService {
     }
   }
 
-  async deleteTask(req: Request, res: Response): Promise<Response> {
+  async moveToBinTask(req: Request, res: Response): Promise<Response> {
+    const { id } = req.params;
+
+    // Validate if `id` is a valid MongoDB ObjectId
+    if (!isValidObjectId(id)) {
+      this.logger.warn(`Invalid profile ID format: ${id}`);
+      return res.status(400).json({
+        status: 'error',
+        message: 'Invalid profile ID format',
+      });
+    }
+
+    try {
+      const deleteTask = await this.TaskModel.findOneAndUpdate(
+        { _id: new Types.ObjectId(id), isActive: true },
+        { isActive: false },
+        { new: true }
+      )
+
+      if (!deleteTask) {
+        return res.status(404).json({
+          status: 'success',
+          message: 'Task not found',
+        });
+      }
+
+      return res.status(400).json({
+        status: 'success',
+        message: 'Record Delete Successfully',
+        data: {
+          taskName: deleteTask?.taskName,
+          TaskDescription: deleteTask?.TaskDescription,
+          ShareType: deleteTask?.ShareType,
+          Priority: deleteTask?.Priority,
+          taskStatus: deleteTask?.isActive,
+        }
+      });
+    } catch (error) {
+      // Catch any unexpected errors and log them
+      this.logger.error(`Error fetching profile for ID: ${id}`, error.stack);
+      return res.status(500).json({
+        status: 'error',
+        message: 'An error occurred while fetching the profile. Please try again later.',
+      });
+    }
+  }
+
+  async undoTask(req: Request, res: Response): Promise<Response> {
     const { id } = req.params;
 
     // Validate if `id` is a valid MongoDB ObjectId
