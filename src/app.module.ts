@@ -27,6 +27,13 @@ import { TaskController } from './TaskModule/controller/TaskModule.controller';
 import { TaskService } from './TaskModule/services/TaskModule.service';
 import { Task, TaskDocument } from './TaskModule/schema/TaskModule.schema';
 
+// 
+import { UploadService } from './Upload/services/Upload.service';
+import { UploadController } from './Upload/controller/Upload.controller';
+import { CloudinaryProvider } from './Upload/provider/cloudinary.provider';
+
+
+
 @Module({
   imports: [
     // Load environment configuration globally, making it available across the entire application
@@ -60,6 +67,7 @@ import { Task, TaskDocument } from './TaskModule/schema/TaskModule.schema';
     ProfileController,  // Handles profile-related routes (view/update profile, etc.)
     ValidationController,
     TaskController,
+    UploadController,
   ],
 
   // Define the providers that contain the core business logic for this module
@@ -69,6 +77,8 @@ import { Task, TaskDocument } from './TaskModule/schema/TaskModule.schema';
     TaskService,
     JwtStrategy,  // Custom JWT strategy for handling token validation and securing routes
     MailValidationService,
+    UploadService,
+    CloudinaryProvider,
   ],
 })
 
