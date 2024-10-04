@@ -10,121 +10,139 @@ import { AuthDocument } from 'src/Auth/schema/user.schema';
 
 @Injectable()
 export class TaskService {
+  // Logger instance for logging messages related to TaskService
   private readonly logger = new Logger(TaskService.name);
 
+  // Injecting the Task and User models using Mongoose
   constructor(
     @InjectModel('Task') private TaskModel: Model<TaskDocument>,
     @InjectModel('User') private UserModel: Model<AuthDocument>,
   ) { }
 
-  // Get profile by ID with improved error handling and validation
+  /**
+   * Retrieves a list of tasks for a given user ID, with validation and error handling.
+   * Tasks can either be user-specific or public tasks, and the profile data is merged.
+   */
   async getTask(req: Request, res: Response): Promise<Response> {
-    const { id } = req.params;
+    const { id, taskId } = req.params;
 
-    // Validate if `id` is a valid MongoDB ObjectId
-    if (!isValidObjectId(id)) {
-      this.logger.warn(`Invalid profile ID format: ${id}`);
+    // Check if the provided ID is a valid MongoDB ObjectId
+    if (!isValidObjectId(id) && !isValidObjectId(taskId)) {
+      this.logger.warn(`Invalid User ID : ${id} or task ID format: ${taskId}`);
       return res.status(400).json({
         status: 'error',
-        message: 'Invalid profile ID format',
+        message: 'Invalid task ID or User ID format',
       });
     }
 
     try {
-      const taskList = await this.TaskModel.aggregate(
-        [
-          {
-            $match: {
-              $or: [
-                { UserId: new Types.ObjectId(id), isActive: true },
-                { ShareType: ShareEnum.Public, isActive: true },
-              ]
-            }
+      // Aggregate task data with profile lookup for enhanced details
+      const taskList = await this.TaskModel.aggregate([
+        {
+          $match: {
+            $or: [
+              { UserId: new Types.ObjectId(id), isActive: true },
+              { ShareType: ShareEnum.Public, isActive: true },
+            ],
           },
-          {
-            $lookup: {
-              from: 'profiles',
-              localField: 'UserId',
-              foreignField: 'userId',
-              as: 'profilesData',
-            }
+        },
+        {
+          $lookup: {
+            from: 'profiles',
+            localField: 'UserId',
+            foreignField: 'userId',
+            as: 'profilesData',
           },
-          {
-            $unwind: {
-              path: '$profiles',
-              includeArrayIndex: 'string',
-              preserveNullAndEmptyArrays: true
-            }
+        },
+        {
+          $unwind: {
+            path: '$profiles',
+            includeArrayIndex: 'string',
+            preserveNullAndEmptyArrays: true,
           },
-          {
-            $addFields: {
-              profile: { $arrayElemAt: ['$profilesData', 0] }
-            }
+        },
+        {
+          $addFields: {
+            profile: { $arrayElemAt: ['$profilesData', 0] },
           },
-          {
-            $project: {
-              profilesData: 0,
-              'profile._id': 0,
-              'profile.userId': 0,
-              __v: 0,
-              string: 0,
-            }
-          }
-        ]
-      );
+        },
+        {
+          $project: {
+            profilesData: 0,
+            'profile._id': 0,
+            'profile.userId': 0,
+            __v: 0,
+            string: 0,
+          },
+        },
+      ]);
 
       return res.status(200).json({
         status: 'success',
         data: taskList,
-      })
+      });
     } catch (error) {
-      // Catch any unexpected errors and log them
-      this.logger.error(`Error fetching profile for ID: ${id}`, error.stack);
+      // Log the error and return a 500 Internal Server Error response
+      this.logger.error(`Error fetching tasks for user ID: ${id}`, error.stack);
       return res.status(500).json({
         status: 'error',
-        message: 'An error occurred while fetching the profile. Please try again later.',
+        message: 'An error occurred while fetching tasks. Please try again later.',
       });
     }
   }
 
+  /**
+   * Retrieves a single task by its ID with error handling.
+   */
   async getSingleTask(req: Request, res: Response): Promise<Response> {
-    const { id } = req.params;
+    const { id, taskId } = req.params;
 
-    // Validate if `id` is a valid MongoDB ObjectId
-    if (!isValidObjectId(id)) {
-      this.logger.warn(`Invalid profile ID format: ${id}`);
+    // Check if the provided ID is a valid MongoDB ObjectId
+    if (!isValidObjectId(id) && !isValidObjectId(taskId)) {
+      this.logger.warn(`Invalid User ID : ${id} or task ID format: ${taskId}`);
       return res.status(400).json({
         status: 'error',
-        message: 'Invalid profile ID format',
+        message: 'Invalid task ID or User ID format',
       });
     }
 
     try {
-      const singleTask = await this.TaskModel.findOne({ _id: new Types.ObjectId(id), isActive: true });
+      const singleTask = await this.TaskModel.findOne({ _id: new Types.ObjectId(taskId), UserId: new Types.ObjectId(id), isActive: true });
+
+      if (!singleTask) {
+        return res.status(404).json({
+          status: 'success',
+          message: 'Task not found',
+        });
+      }
+
       return res.status(200).json({
         status: 'success',
         data: singleTask,
       });
     } catch (error) {
-      // Catch any unexpected errors and log them
-      this.logger.error(`Error fetching Task for ID: ${id}`, error.stack);
+      // Catch unexpected errors and log them
+      this.logger.error(`Error fetching task for ID: ${id}`, error.stack);
       return res.status(500).json({
         status: 'error',
-        message: 'An error occurred while fetching the profile. Please try again later.',
+        message: 'An error occurred while fetching the task. Please try again later.',
       });
     }
   }
 
+  /**
+   * Creates a new task with validation and error handling.
+   */
   async createTask(req: Request, res: Response): Promise<Response> {
     const body = req.body;
-    const { id } = req.params
+    const { id } = req.params;
 
-    // Transform body into an instance of AuthDto and validate it
-    const createAuthDto = plainToInstance(TaskDto, body);
-    const errors = await validate(createAuthDto);
+    // Transform and validate the request body into TaskDto
+    const createTaskDto = plainToInstance(TaskDto, body);
+    const errors = await validate(createTaskDto);
 
     if (errors.length > 0) {
-      // If validation errors exist, return them
+      // Return validation errors if any
       return res.status(400).json({
         status: 'error',
         message: 'Validation failed',
@@ -136,27 +154,29 @@ export class TaskService {
     }
 
     try {
+      // Create a new task with the provided data
       const createTask = new this.TaskModel({
         taskName: body.taskName,
         TaskDescription: body.TaskDescription,
         UserId: new Types.ObjectId(id),
         ShareType: body.ShareType,
         Priority: body.Priority,
-      })
-      createTask.save();
+      });
+      await createTask.save();
 
       return res.status(200).json({
         status: 'success',
-        message: "Record create successfully",
+        message: 'Task created successfully',
         data: {
           taskName: createTask.taskName,
           TaskDescription: createTask.TaskDescription,
           ShareType: createTask.ShareType || ShareEnum.Private,
           Priority: createTask.Priority,
-        }
-      })
+        },
+      });
     } catch (error) {
-      this.logger.error('Error creating user', { error });
+      // Log the error and return a 500 Internal Server Error response
+      this.logger.error('Error creating task', { error });
       return res.status(500).json({
         status: 'error',
         message: 'Internal server error, please try again later.',
@@ -164,16 +184,18 @@ export class TaskService {
     }
   }
 
+  /**
+   * Updates a task with provided fields, including validation and error handling.
+   */
   async updateTask(req: Request, res: Response): Promise<Response> {
     const body = req.body;
-    const { id } = req.params
+    const { id, taskId } = req.params;
 
-    // Transform body into an instance of AuthDto and validate it
+    // Validate the request body
     const createTaskDto = plainToInstance(TaskDto, body);
     const errors = await validate(createTaskDto);
 
     if (errors.length > 0) {
-      // If validation errors exist, return them
       return res.status(400).json({
         status: 'error',
         message: 'Validation failed',
@@ -184,15 +206,26 @@ export class TaskService {
       });
     }
 
+    // Check if the provided ID is a valid MongoDB ObjectId
+    if (!isValidObjectId(id) && !isValidObjectId(taskId)) {
+      this.logger.warn(`Invalid User ID : ${id} or task ID format: ${taskId}`);
+      return res.status(400).json({
+        status: 'error',
+        message: 'Invalid task ID or User ID format',
+      });
+    }
+
     try {
+      // Prepare update fields
       const updateFields: Partial<TaskDocument> = {};
       if (body.taskName) updateFields.taskName = body.taskName;
       if (body.TaskDescription) updateFields.TaskDescription = body.TaskDescription;
       if (body.ShareType) updateFields.ShareType = body.ShareType;
       if (body.Priority) updateFields.Priority = body.Priority;
 
-      const updateTask = await this.TaskModel.findByIdAndUpdate(
-        id,
+      // Update task by ID
+      const updateTask = await this.TaskModel.findOneAndUpdate(
+        { _id: new Types.ObjectId(taskId), UserId: new Types.ObjectId(id) },
         { $set: updateFields },
         { new: true }
       );
@@ -205,17 +238,18 @@ export class TaskService {
       }
 
       return res.status(200).json({
-        status: "success",
-        message: "Record Update successfully",
+        status: 'success',
+        message: 'Task updated successfully',
         data: {
           taskName: updateTask?.taskName,
           TaskDescription: updateTask?.TaskDescription,
           ShareType: updateTask?.ShareType,
           Priority: updateTask?.Priority,
-        }
-      })
+        },
+      });
     } catch (error) {
-      this.logger.error('Error creating user', { error });
+      // Log the error and return a 500 Internal Server Error response
+      this.logger.error('Error updating task', { error });
       return res.status(500).json({
         status: 'error',
         message: 'Internal server error, please try again later.',
@@ -223,24 +257,28 @@ export class TaskService {
     }
   }
 
+  /**
+   * Moves a task to the bin (soft delete) by marking it inactive.
+   */
   async moveToBinTask(req: Request, res: Response): Promise<Response> {
-    const { id } = req.params;
+    const { id, taskId } = req.params;
 
     // Validate if `id` is a valid MongoDB ObjectId
     if (!isValidObjectId(id)) {
-      this.logger.warn(`Invalid profile ID format: ${id}`);
+      this.logger.warn(`Invalid task ID format: ${id}`);
       return res.status(400).json({
         status: 'error',
-        message: 'Invalid profile ID format',
+        message: 'Invalid task ID format',
       });
     }
 
     try {
+      // Update the task to mark it as inactive (soft delete)
       const deleteTask = await this.TaskModel.findOneAndUpdate(
-        { _id: new Types.ObjectId(id), isActive: true },
+        { _id: new Types.ObjectId(taskId), UserId: new Types.ObjectId(id), isActive: true },
         { isActive: false },
         { new: true }
-      )
+      );
 
       if (!deleteTask) {
         return res.status(404).json({
@@ -249,47 +287,90 @@ export class TaskService {
         });
       }
 
-      return res.status(400).json({
+      return res.status(200).json({
         status: 'success',
-        message: 'Record Delete Successfully',
+        message: 'Task moved to bin successfully',
         data: {
           taskName: deleteTask?.taskName,
           TaskDescription: deleteTask?.TaskDescription,
           ShareType: deleteTask?.ShareType,
           Priority: deleteTask?.Priority,
           taskStatus: deleteTask?.isActive,
-        }
+        },
       });
     } catch (error) {
-      // Catch any unexpected errors and log them
-      this.logger.error(`Error fetching profile for ID: ${id}`, error.stack);
+      // Log any unexpected errors and return a 500 Internal Server Error response
+      this.logger.error(`Error moving task to bin for ID: ${id}`, error.stack);
       return res.status(500).json({
         status: 'error',
-        message: 'An error occurred while fetching the profile. Please try again later.',
+        message: 'An error occurred while moving the task to the bin. Please try again later.',
       });
     }
   }
 
+  /**
+   * Reverts a soft-deleted task by marking it active again.
+   */
   async undoTask(req: Request, res: Response): Promise<Response> {
-    const { id } = req.params;
+    const { id, taskId } = req.params;
 
     // Validate if `id` is a valid MongoDB ObjectId
     if (!isValidObjectId(id)) {
-      this.logger.warn(`Invalid profile ID format: ${id}`);
+      this.logger.warn(`Invalid task ID format: ${id}`);
       return res.status(400).json({
         status: 'error',
-        message: 'Invalid profile ID format',
+        message: 'Invalid task ID format',
       });
     }
 
     try {
+      const undoTask = await this.TaskModel.findOneAndUpdate(
+        { _id: new Types.ObjectId(taskId), UserId: new Types.ObjectId(id) },
+        { isActive: true },
+        { new: true },
+      )
 
+      if (!undoTask) {
+        return res.status(404).json({
+          status: 'success',
+          message: 'Task not found',
+        });
+      }
+
+      return res.status(200).json({
+        status: 'success',
+        message: "Record undo successfully",
+      })
     } catch (error) {
-      // Catch any unexpected errors and log them
-      this.logger.error(`Error fetching profile for ID: ${id}`, error.stack);
+      // Log unexpected errors and return a 500 Internal Server Error response
+      this.logger.error(`Error undoing task for ID: ${id}`, error.stack);
       return res.status(500).json({
         status: 'error',
-        message: 'An error occurred while fetching the profile. Please try again later.',
+        message: 'An error occurred while undoing the task. Please try again later.',
+      });
+    }
+  }
+
+  async getBinTask(req: Request, res: Response): Promise<Response> {
+    const { id } = req.params;
+
+    // Validate if `id` is a valid MongoDB ObjectId
+    if (!isValidObjectId(id)) {
+      this.logger.warn(`Invalid task ID format: ${id}`);
+      return res.status(400).json({
+        status: 'error',
+        message: 'Invalid task ID format',
+      });
+    }
+
+    try {
+      const getDeleteTaskList = await this.TaskModel.find
+    } catch (error) {
+      // Log unexpected errors and return a 500 Internal Server Error response
+      this.logger.error(`Error undoing task for ID: ${id}`, error.stack);
+      return res.status(500).json({
+        status: 'error',
+        message: 'An error occurred while undoing the task. Please try again later.',
       });
     }
   }
