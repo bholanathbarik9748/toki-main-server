@@ -31,6 +31,7 @@ import { Task, TaskDocument } from './TaskModule/schema/TaskModule.schema';
 import { UploadService } from './Upload/services/Upload.service';
 import { UploadController } from './Upload/controller/Upload.controller';
 import { CloudinaryProvider } from './Upload/provider/cloudinary.provider';
+import { AppController } from './app.controller';
 
 
 
@@ -63,6 +64,7 @@ import { CloudinaryProvider } from './Upload/provider/cloudinary.provider';
 
   // Define the controllers responsible for handling HTTP requests and routing them to appropriate service methods
   controllers: [
+    AppController,
     AuthController,  // Handles authentication-related routes (login, signup, etc.)
     ProfileController,  // Handles profile-related routes (view/update profile, etc.)
     ValidationController,

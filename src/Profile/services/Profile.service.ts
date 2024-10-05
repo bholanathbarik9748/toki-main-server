@@ -96,6 +96,7 @@ export class ProfileService {
 
     try {
       const newProfile = new this.ProfileModel({
+        profilePic: body?.profilePic || "",
         firstName: body?.firstName,
         lastName: body?.lastName,
         userId: new Types.ObjectId(id),
@@ -140,6 +141,7 @@ export class ProfileService {
 
     try {
       const updateFields: Partial<ProfileDocument> = {};
+      if (body.profilePic) updateFields.profilePic = body.profilePic;
       if (body.firstName) updateFields.firstName = body.firstName;
       if (body.lastName) updateFields.lastName = body.lastName;
       if (body.occupation) updateFields.occupation = body.occupation;

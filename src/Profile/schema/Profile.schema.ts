@@ -7,6 +7,9 @@ export type ProfileDocument = Profile & Document;
 
 @Schema({ timestamps: true })  // Enable timestamps for createdAt and updatedAt fields
 export class Profile {
+    @Prop({ required: false, trim: true, default: "" })
+    profilePic: string;
+
     @Prop({ required: true, trim: true })
     firstName: string;
 
