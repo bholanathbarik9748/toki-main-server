@@ -9,6 +9,7 @@ import { validate } from 'class-validator';
 import { UserExceptionFilter } from 'src/Auth/middleware/user.middleware';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
+import { OtpDocument } from 'src/Verification/schema/otp.schema';
 
 @Injectable()
 @UseFilters(UserExceptionFilter)
@@ -18,6 +19,7 @@ export class AuthService {
   // Inject JwtService in the constructor
   constructor(
     @InjectModel('User') private UserModel: Model<AuthDocument>,
+    @InjectModel('Otp') private OtpModel: Model<OtpDocument>,
     private jwtService: JwtService // Ensure JwtService is injected
   ) { }
 
@@ -50,6 +52,8 @@ export class AuthService {
       });
     }
 
+    const session = await this.UserModel.startSession(); // Start a session for the transaction
+    session.startTransaction();
     try {
       // Hash the password before saving the user
       const salt = await bcrypt.genSalt(10);
@@ -60,6 +64,10 @@ export class AuthService {
         password: hashedPassword,
       });
       await newUser.save();
+
+      await this.OtpModel.findOneAndDelete({ email: body.email });
+
+      session.endSession();
 
       // Create JWT token
       const payload = { email: newUser.email, sub: newUser._id };

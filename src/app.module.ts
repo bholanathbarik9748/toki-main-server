@@ -28,6 +28,7 @@ import { MailValidationService } from './Verification/services/MailValidation.se
 import { TaskController } from './TaskModule/controller/TaskModule.controller';  // Controller for handling task-related requests
 import { TaskService } from './TaskModule/services/TaskModule.service';  // Service for managing task-related logic
 import { Task, TaskDocument } from './TaskModule/schema/TaskModule.schema';  // MongoDB schema and document for Task entity
+import { Otp, OtpSchema } from './Verification/schema/otp.schema';
 
 // Import upload service and provider for handling file uploads
 import { UploadService } from './Upload/services/Upload.service';  // Service responsible for file upload logic (e.g., images)
@@ -64,6 +65,7 @@ import { S3Provider } from './Upload/provider/s3.provider';  // S3 provider for 
       { name: User.name, schema: AuthDocument },  // Register User schema for authentication-related data
       { name: Profile.name, schema: ProfileDocument },  // Register Profile schema for storing user profile information
       { name: Task.name, schema: TaskDocument },  // Register Task schema for handling task-related data
+      { name: Otp.name, schema: OtpSchema },  // Otp schema for handling task-related data
     ]),
   ],
 

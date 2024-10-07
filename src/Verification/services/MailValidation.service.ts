@@ -4,6 +4,7 @@ import { isValidObjectId, Model, Types } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { AuthDocument } from 'src/Auth/schema/user.schema';
 import * as nodemailer from 'nodemailer'; // Import nodemailer
+import { OtpDocument } from '../schema/otp.schema';
 
 @Injectable()
 export class MailValidationService {
@@ -11,6 +12,7 @@ export class MailValidationService {
 
   constructor(
     @InjectModel('User') private UserModel: Model<AuthDocument>,
+    @InjectModel('Otp') private OtpModel: Model<OtpDocument>,
   ) { }
 
   // Get profile by ID with improved error handling and validation
@@ -42,12 +44,18 @@ export class MailValidationService {
       await transporter.sendMail(mailOptions);
       this.logger.log(`Validation code sent to ${email}`);
 
+      await this.OtpModel.findOneAndUpdate(
+        { email: email },
+        { otp: validationCode },
+        {
+          upsert: true,
+          setDefaultsOnInsert: true,
+        }
+      )
+
       return res.status(200).json({
         status: 'success',
         message: 'Validation code sent successfully.',
-        data: {
-          code: validationCode,
-        },
       });
     } catch (error) {
       this.logger.error(`Failed to send validation code: ${error.message}`);
