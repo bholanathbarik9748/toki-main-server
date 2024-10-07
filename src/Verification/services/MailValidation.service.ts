@@ -15,24 +15,7 @@ export class MailValidationService {
 
   // Get profile by ID with improved error handling and validation
   async sendValidationCode(req: Request, res: Response): Promise<Response> {
-    const { id } = req.params;
-
-    // Validate if `id` is a valid MongoDB ObjectId
-    if (!isValidObjectId(id)) {
-      this.logger.warn(`Invalid profile ID format: ${id}`);
-      return res.status(400).json({
-        status: 'error',
-        message: 'Invalid profile ID format',
-      });
-    }
-
-    const userDetails = await this.UserModel.findById(new Types.ObjectId(id));
-    if (!userDetails) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Profile verification failed. Please try again later.',
-      });
-    }
+    const { email } = req.body;
 
     // Generate a validation code
     const validationCode = Math.floor(100000 + Math.random() * 900000).toString(); // Generate a 6-digit code
@@ -49,7 +32,7 @@ export class MailValidationService {
     // Email options
     const mailOptions = {
       from: process.env.EMAIL_USER, // Sender email address
-      to: userDetails.email, // Receiver email address from the user's details
+      to: email, // Receiver email address from the user's details
       subject: 'Your Validation Code',
       text: `Your email validation code is: ${validationCode}`,
     };
@@ -57,7 +40,7 @@ export class MailValidationService {
     try {
       // Send email
       await transporter.sendMail(mailOptions);
-      this.logger.log(`Validation code sent to ${userDetails.email}`);
+      this.logger.log(`Validation code sent to ${email}`);
 
       return res.status(200).json({
         status: 'success',

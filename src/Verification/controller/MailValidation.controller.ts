@@ -8,7 +8,7 @@ import { MailValidationService } from '../services/MailValidation.service';
 export class ValidationController {
     constructor(private readonly MailValidationService: MailValidationService) { }
 
-    @Post('/:id')
+    @Post()
     createValidationCode(@Req() req: Request, @Res() res: Response) {
         return this.MailValidationService.sendValidationCode(req, res)
     }
