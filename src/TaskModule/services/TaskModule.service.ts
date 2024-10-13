@@ -1,4 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ShareEnum, TaskDocument } from '../schema/TaskModule.schema';
 import { isValidObjectId, Model, Types } from 'mongoose';
@@ -17,7 +22,7 @@ export class TaskService {
   constructor(
     @InjectModel('Task') private TaskModel: Model<TaskDocument>,
     @InjectModel('User') private UserModel: Model<AuthDocument>,
-  ) { }
+  ) {}
 
   /**
    * Retrieves a list of tasks for a given user ID, with validation and error handling.
@@ -86,7 +91,41 @@ export class TaskService {
       this.logger.error(`Error fetching tasks for user ID: ${id}`, error.stack);
       return res.status(500).json({
         status: 'error',
-        message: 'An error occurred while fetching tasks. Please try again later.',
+        message:
+          'An error occurred while fetching tasks. Please try again later.',
+      });
+    }
+  }
+
+  async getSearchTask(searchText: string, res: Response): Promise<any> {
+    // Check if the provided ID is a valid MongoDB ObjectId
+    if (searchText || searchText.length <= 0) {
+      throw new BadRequestException('Search text cannot be empty');
+    }
+
+    try {
+      const data = await this.TaskModel.find({
+        where: { taskName: searchText },
+      });
+
+      // If no tasks are found, throw a NotFoundException
+      if (!data || data.length === 0) {
+        throw new NotFoundException(
+          `No tasks found for the search term: ${searchText}`,
+        );
+      }
+
+      return res.status(200).json({
+        status: 'success',
+        data,
+      });
+    } catch (error) {
+      // Log the error and return a 500 Internal Server Error response
+      this.logger.error(`Error fetching tasks for user`);
+      return res.status(500).json({
+        status: 'error',
+        message:
+          'An error occurred while fetching tasks. Please try again later.',
       });
     }
   }
@@ -107,7 +146,11 @@ export class TaskService {
     }
 
     try {
-      const singleTask = await this.TaskModel.findOne({ _id: new Types.ObjectId(taskId), UserId: new Types.ObjectId(id), isActive: true });
+      const singleTask = await this.TaskModel.findOne({
+        _id: new Types.ObjectId(taskId),
+        UserId: new Types.ObjectId(id),
+        isActive: true,
+      });
 
       if (!singleTask) {
         return res.status(404).json({
@@ -125,7 +168,8 @@ export class TaskService {
       this.logger.error(`Error fetching task for ID: ${id}`, error.stack);
       return res.status(500).json({
         status: 'error',
-        message: 'An error occurred while fetching the task. Please try again later.',
+        message:
+          'An error occurred while fetching the task. Please try again later.',
       });
     }
   }
@@ -219,7 +263,8 @@ export class TaskService {
       // Prepare update fields
       const updateFields: Partial<TaskDocument> = {};
       if (body.taskName) updateFields.taskName = body.taskName;
-      if (body.TaskDescription) updateFields.TaskDescription = body.TaskDescription;
+      if (body.TaskDescription)
+        updateFields.TaskDescription = body.TaskDescription;
       if (body.ShareType) updateFields.ShareType = body.ShareType;
       if (body.Priority) updateFields.Priority = body.Priority;
 
@@ -227,7 +272,7 @@ export class TaskService {
       const updateTask = await this.TaskModel.findOneAndUpdate(
         { _id: new Types.ObjectId(taskId), UserId: new Types.ObjectId(id) },
         { $set: updateFields },
-        { new: true }
+        { new: true },
       );
 
       if (!updateTask) {
@@ -275,9 +320,13 @@ export class TaskService {
     try {
       // Update the task to mark it as inactive (soft delete)
       const deleteTask = await this.TaskModel.findOneAndUpdate(
-        { _id: new Types.ObjectId(taskId), UserId: new Types.ObjectId(id), isActive: true },
+        {
+          _id: new Types.ObjectId(taskId),
+          UserId: new Types.ObjectId(id),
+          isActive: true,
+        },
         { isActive: false },
-        { new: true }
+        { new: true },
       );
 
       if (!deleteTask) {
@@ -303,7 +352,8 @@ export class TaskService {
       this.logger.error(`Error moving task to bin for ID: ${id}`, error.stack);
       return res.status(500).json({
         status: 'error',
-        message: 'An error occurred while moving the task to the bin. Please try again later.',
+        message:
+          'An error occurred while moving the task to the bin. Please try again later.',
       });
     }
   }
@@ -328,7 +378,7 @@ export class TaskService {
         { _id: new Types.ObjectId(taskId), UserId: new Types.ObjectId(id) },
         { isActive: true },
         { new: true },
-      )
+      );
 
       if (!undoTask) {
         return res.status(404).json({
@@ -339,14 +389,15 @@ export class TaskService {
 
       return res.status(200).json({
         status: 'success',
-        message: "Record undo successfully",
-      })
+        message: 'Record undo successfully',
+      });
     } catch (error) {
       // Log unexpected errors and return a 500 Internal Server Error response
       this.logger.error(`Error undoing task for ID: ${id}`, error.stack);
       return res.status(500).json({
         status: 'error',
-        message: 'An error occurred while undoing the task. Please try again later.',
+        message:
+          'An error occurred while undoing the task. Please try again later.',
       });
     }
   }
@@ -364,13 +415,14 @@ export class TaskService {
     }
 
     try {
-      const getDeleteTaskList = await this.TaskModel.find
+      const getDeleteTaskList = await this.TaskModel.find;
     } catch (error) {
       // Log unexpected errors and return a 500 Internal Server Error response
       this.logger.error(`Error undoing task for ID: ${id}`, error.stack);
       return res.status(500).json({
         status: 'error',
-        message: 'An error occurred while undoing the task. Please try again later.',
+        message:
+          'An error occurred while undoing the task. Please try again later.',
       });
     }
   }

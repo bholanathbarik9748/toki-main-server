@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Request, Response } from 'express';
 import { Model } from 'mongoose';
 import { AuthDocument } from '../schema/user.schema';
-import { AuthDto } from 'src/Auth/validation/auth.dto';
+import { AuthDto, ForgotPasswordDto } from 'src/Auth/validation/auth.dto';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { UserExceptionFilter } from 'src/Auth/middleware/user.middleware';
@@ -20,8 +20,8 @@ export class AuthService {
   constructor(
     @InjectModel('User') private UserModel: Model<AuthDocument>,
     @InjectModel('Otp') private OtpModel: Model<OtpDocument>,
-    private jwtService: JwtService // Ensure JwtService is injected
-  ) { }
+    private jwtService: JwtService, // Ensure JwtService is injected
+  ) {}
 
   async signUp(req: Request, res: Response): Promise<Response> {
     const body = req.body;
@@ -43,7 +43,10 @@ export class AuthService {
     }
 
     // Check if the user already exists using `findOne`
-    const existingUser = await this.UserModel.findOne({ email: body.email, isActive: true });
+    const existingUser = await this.UserModel.findOne({
+      email: body.email,
+      isActive: true,
+    });
 
     if (existingUser) {
       return res.status(400).json({
@@ -112,7 +115,10 @@ export class AuthService {
 
     try {
       // Check if the user exists by email
-      const user = await this.UserModel.findOne({ email: body.email, isActive: true });
+      const user = await this.UserModel.findOne({
+        email: body.email,
+        isActive: true,
+      });
 
       if (!user) {
         return res.status(400).json({
@@ -122,7 +128,10 @@ export class AuthService {
       }
 
       // Compare the provided password with the hashed password in the database
-      const isPasswordValid = await bcrypt.compare(body.password, user.password);
+      const isPasswordValid = await bcrypt.compare(
+        body.password,
+        user.password,
+      );
       if (!isPasswordValid) {
         return res.status(400).json({
           status: 'error',
@@ -150,6 +159,82 @@ export class AuthService {
         status: 'error',
         message: 'Internal server error, please try again later.',
       });
+    }
+  }
+
+  async forgotPassword(req: Request, res: Response): Promise<Response> {
+    const body = req.body;
+
+    // Validate input data
+    const createForgotPasswordDto = plainToInstance(ForgotPasswordDto, body);
+    const errors = await validate(createForgotPasswordDto);
+
+    // Return validation errors
+    if (errors.length > 0) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Validation failed',
+        errors: errors.map((err) => ({
+          property: err.property,
+          constraints: err.constraints,
+        })),
+      });
+    }
+
+    const session = await this.UserModel.startSession();
+    session.startTransaction();
+
+    try {
+      // Find OTP and user in one query (if your schema supports it)
+      const otpDetails = await this.OtpModel.findOne({
+        email: body.email,
+        otp: body.otp,
+      }).session(session);
+
+      if (!otpDetails) {
+        await session.abortTransaction();
+        return res.status(400).json({
+          status: 'error',
+          message: 'Invalid email or OTP',
+        });
+      }
+
+      // Hash the new password
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(body.password, salt);
+
+      // Update user's password
+      const updatedUser = await this.UserModel.findOneAndUpdate(
+        { email: body.email },
+        { password: hashedPassword },
+      ).session(session);
+
+      if (!updatedUser) {
+        await session.abortTransaction();
+        return res.status(404).json({
+          status: 'error',
+          message: 'User not found',
+        });
+      }
+
+      // Optionally invalidate the OTP (if you want one-time usage)
+      await this.OtpModel.deleteOne({ email: body.email }).session(session);
+
+      await session.commitTransaction();
+
+      return res.status(200).json({
+        status: 'success',
+        message: 'Password updated successfully',
+      });
+    } catch (error) {
+      this.logger.error('Error resetting password', { error, email: body.email });
+      await session.abortTransaction();
+      return res.status(500).json({
+        status: 'error',
+        message: 'Internal server error, please try again later.',
+      });
+    } finally {
+      session.endSession();
     }
   }
 }

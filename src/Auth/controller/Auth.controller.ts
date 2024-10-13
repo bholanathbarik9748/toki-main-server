@@ -17,4 +17,9 @@ export class AuthController {
   async signIn(@Req() req: Request, @Res() res: Response) {
     return this.authService.signIn(req, res);
   }
+
+  @Post('forgot-password')
+  async forgotPassword(@Req() req: Request, @Res() res: Response){
+    return this.authService.forgotPassword(req, res);
+  }
 }
