@@ -22,7 +22,7 @@ export class TaskService {
   constructor(
     @InjectModel('Task') private TaskModel: Model<TaskDocument>,
     @InjectModel('User') private UserModel: Model<AuthDocument>,
-  ) {}
+  ) { }
 
   /**
    * Retrieves a list of tasks for a given user ID, with validation and error handling.
@@ -97,35 +97,75 @@ export class TaskService {
     }
   }
 
-  async getSearchTask(searchText: string, res: Response): Promise<any> {
-    // Check if the provided ID is a valid MongoDB ObjectId
-    if (searchText || searchText.length <= 0) {
-      throw new BadRequestException('Search text cannot be empty');
+  async getSearchTask(req: Request, res: Response): Promise<Response> {
+    const { searchText } = req.query;
+    const { id } = req.params;
+
+    // Check if the search text is provided and valid
+    if (!searchText) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Search text cannot be empty',
+      });
     }
 
     try {
-      const data = await this.TaskModel.find({
-        where: { taskName: searchText },
-      });
+      // Find tasks by search text with case-insensitive regex and populate profile data
+      const taskList = await this.TaskModel.aggregate(
+        [
+          {
+            $match: {
+              taskName: { $regex: searchText, $options: 'i' }, // Case-insensitive search
+              $or: [
+                { isActive: true },
+                { UserId: new Types.ObjectId(id) },
+              ],
+            },
+          },
+          {
+            $lookup: {
+              from: 'profiles',
+              localField: 'UserId',
+              foreignField: 'userId',
+              as: 'userDetail',
+            }
+          },
+          {
+            $unwind: '$userDetail'
+          },
+          {
+            $project: {
+              taskName: 1,
+              TaskDescription: 1,
+              Priority: 1,
+              ShareType: 1,
+              'userDetail.firstName': 1,
+              'userDetail.lastName': 1,
+              'userDetail.occupation': 1,
+            }
+          }
+        ]
+      )
 
-      // If no tasks are found, throw a NotFoundException
-      if (!data || data.length === 0) {
-        throw new NotFoundException(
-          `No tasks found for the search term: ${searchText}`,
-        );
+      // If no tasks are found, return a success message with no data
+      if (!taskList || taskList.length === 0) {
+        return res.status(200).json({
+          status: 'success',
+          message: `No tasks found for the search term: ${searchText}`,
+        });
       }
 
+      // Return the found tasks
       return res.status(200).json({
         status: 'success',
-        data,
+        data: taskList,
       });
     } catch (error) {
       // Log the error and return a 500 Internal Server Error response
-      this.logger.error(`Error fetching tasks for user`);
+      this.logger.error(`Error fetching tasks for search text: ${searchText}`, error);
       return res.status(500).json({
         status: 'error',
-        message:
-          'An error occurred while fetching tasks. Please try again later.',
+        message: 'An error occurred while fetching tasks. Please try again later.',
       });
     }
   }

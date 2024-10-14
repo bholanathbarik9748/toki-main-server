@@ -18,16 +18,16 @@ import { TaskService } from '../services/TaskModule.service';
 @Controller('user/:id/task')
 @UseGuards(JwtAuthGuard)
 export class TaskController {
-  constructor(private readonly TaskService: TaskService) {}
+  constructor(private readonly TaskService: TaskService) { }
 
   @Get('')
   getTask(@Req() req: Request, @Res() res: Response) {
     return this.TaskService.getTask(req, res);
   }
 
-  @Get('search')
-  getSearchTask(@Query('searchText') searchText: string, res: Response) {
-    return this.TaskService.getSearchTask(searchText, res);
+  @Get('/searchQuery')
+  getSearchTask(@Req() req: Request, @Res() res: Response) {
+    return this.TaskService.getSearchTask(req, res);
   }
 
   @Post('')
